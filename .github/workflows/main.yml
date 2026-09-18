@@ -8,27 +8,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 파일 가져오기
+      - name: 저장소 가져오기
         uses: actions/checkout@v4
 
-      - name: Java 설치
+      - name: ZIP 풀기
+        run: |
+          mkdir project
+          unzip -q "일수계산기_2차버전_정리본.zip" -d project
+
+      - name: Java 17 설치
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Android SDK 준비
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
 
       - name: Android SDK 설치
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
-      - name: 프로젝트 압축 풀기
-        run: |
-          mkdir -p projectfiles
-          unzip -q ./*.zip -d projectfiles
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
       - name: Gradle 준비
         uses: gradle/actions/setup-gradle@v4
@@ -36,13 +41,11 @@ jobs:
           gradle-version: '8.10.2'
 
       - name: APK 빌드
-        run: |
-          PROJECT_DIR=$(find projectfiles -name settings.gradle.kts -print -quit | xargs dirname)
-          cd "$PROJECT_DIR"
-          gradle :app:assembleDebug
+        working-directory: project
+        run: gradle :app:assembleDebug --no-daemon
 
       - name: APK 저장
         uses: actions/upload-artifact@v4
         with:
           name: 일수계산기-APK
-          path: projectfiles/**/app/build/outputs/apk/debug/app-debug.apk
+          path: project/app/build/outputs/apk/debug/app-debug.apk
